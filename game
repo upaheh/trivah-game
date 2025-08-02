@@ -1,0 +1,487 @@
+import random
+import time
+import winsound
+import os
+import platform
+import json
+from datetime import datetime
+
+class GeographyQuiz:
+    def __init__(self):
+        self.questions = self.load_questions()
+        self.score = 0
+        self.username = ""
+        self.consecutive_wrong = 0
+        self.consecutive_correct = 0
+        self.penalty_active = False
+        self.sound_enabled = True
+        self.difficulty = "medium"
+        self.high_scores = self.load_high_scores()
+        self.current_questions = []
+        self.start_time = 0
+        self.total_time = 0
+
+    def load_questions(self):
+        """Load questions with difficulty levels"""
+        return [
+            # Easy questions (difficulty=1)
+            {
+                "question": "What is the capital of Australia?",
+                "options": ["Sydney", "Melbourne", "Canberra", "Perth"],
+                "answer": "Canberra",
+                "difficulty": 1
+            },
+            {
+                "question": "Which country has the largest population?",
+                "options": ["India", "United States", "China", "Brazil"],
+                "answer": "China",
+                "difficulty": 1
+            },
+            {
+                "question": "The Amazon River flows through which continent?",
+                "options": ["Africa", "Asia", "South America", "Australia"],
+                "answer": "South America",
+                "difficulty": 1
+            },
+            {
+                "question": "Which of these countries is NOT in Europe?",
+                "options": ["Hungary", "Morocco", "Greece", "Sweden"],
+                "answer": "Morocco",
+                "difficulty": 1
+            },
+            {
+                "question": "Which country is known as the 'Land of the Rising Sun'?",
+                "options": ["China", "Thailand", "Japan", "South Korea"],
+                "answer": "Japan",
+                "difficulty": 1
+            },
+            {
+                "question": "What is the capital of Canada?",
+                "options": ["Toronto", "Vancouver", "Ottawa", "Montreal"],
+                "answer": "Ottawa",
+                "difficulty": 1
+            },
+            {
+                "question": "Which ocean is the largest?",
+                "options": ["Atlantic", "Indian", "Arctic", "Pacific"],
+                "answer": "Pacific",
+                "difficulty": 1
+            },
+            {
+                "question": "Which continent is the largest?",
+                "options": ["Africa", "Asia", "North America", "Europe"],
+                "answer": "Asia",
+                "difficulty": 1
+            },
+            {
+                "question": "What is the capital of France?",
+                "options": ["Berlin", "London", "Paris", "Madrid"],
+                "answer": "Paris",
+                "difficulty": 1
+            },
+            {
+                "question": "Which country is also a continent?",
+                "options": ["Greenland", "Madagascar", "Australia", "Japan"],
+                "answer": "Australia",
+                "difficulty": 1
+            },
+            
+            # Medium questions (difficulty=2)
+            {
+                "question": "Mount Everest is located in which mountain range?",
+                "options": ["Andes", "Alps", "Himalayas", "Rockies"],
+                "answer": "Himalayas",
+                "difficulty": 2
+            },
+            {
+                "question": "What is the largest desert in the world?",
+                "options": ["Gobi", "Sahara", "Antarctica", "Arabian"],
+                "answer": "Antarctica",
+                "difficulty": 2
+            },
+            {
+                "question": "The Great Barrier Reef is located off the coast of which country?",
+                "options": ["Indonesia", "Philippines", "Australia", "Mexico"],
+                "answer": "Australia",
+                "difficulty": 2
+            },
+            {
+                "question": "Which country has the most natural lakes?",
+                "options": ["Russia", "Canada", "USA", "Finland"],
+                "answer": "Canada",
+                "difficulty": 2
+            },
+            {
+                "question": "What is the world's longest river?",
+                "options": ["Amazon", "Nile", "Yangtze", "Mississippi"],
+                "answer": "Nile",
+                "difficulty": 2
+            },
+            {
+                "question": "Which country is both an island and a continent?",
+                "options": ["Greenland", "Madagascar", "Australia", "Japan"],
+                "answer": "Australia",
+                "difficulty": 2
+            },
+            {
+                "question": "What is the capital of Brazil?",
+                "options": ["Rio de Janeiro", "São Paulo", "Brasília", "Salvador"],
+                "answer": "Brasília",
+                "difficulty": 2
+            },
+            {
+                "question": "Which sea is surrounded by the Mediterranean countries?",
+                "options": ["Red Sea", "Black Sea", "Mediterranean Sea", "Caspian Sea"],
+                "answer": "Mediterranean Sea",
+                "difficulty": 2
+            },
+            
+            # Hard questions (difficulty=3)
+            {
+                "question": "Which country has the most time zones?",
+                "options": ["Russia", "USA", "China", "France"],
+                "answer": "France",
+                "difficulty": 3
+            },
+            {
+                "question": "What is the capital of Bhutan?",
+                "options": ["Paro", "Punakha", "Thimphu", "Wangdue"],
+                "answer": "Thimphu",
+                "difficulty": 3
+            },
+            {
+                "question": "Which country has the southernmost capital city?",
+                "options": ["New Zealand", "South Africa", "Chile", "Argentina"],
+                "answer": "New Zealand",
+                "difficulty": 3
+            },
+            {
+                "question": "The 'Ring of Fire' is associated with what?",
+                "options": ["Hurricanes", "Earthquakes", "Tornadoes", "Volcanoes"],
+                "answer": "Volcanoes",
+                "difficulty": 3
+            },
+            {
+                "question": "Which country has the most UNESCO World Heritage Sites?",
+                "options": ["China", "Italy", "Spain", "France"],
+                "answer": "Italy",
+                "difficulty": 3
+            },
+            {
+                "question": "What is the only sea without any coasts?",
+                "options": ["Sargasso Sea", "Coral Sea", "Tasman Sea", "Arabian Sea"],
+                "answer": "Sargasso Sea",
+                "difficulty": 3
+            },
+            {
+                "question": "Which country is the smallest by land area?",
+                "options": ["Monaco", "Nauru", "Vatican City", "San Marino"],
+                "answer": "Vatican City",
+                "difficulty": 3
+            },
+            {
+                "question": "What is the capital of Myanmar?",
+                "options": ["Yangon", "Mandalay", "Naypyidaw", "Bago"],
+                "answer": "Naypyidaw",
+                "difficulty": 3
+            }
+        ]
+
+    def load_high_scores(self):
+        """Load high scores from file or return default"""
+        try:
+            with open("high_scores.json", "r") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {"easy": [], "medium": [], "hard": []}
+
+    def save_high_scores(self):
+        """Save high scores to file"""
+        with open("high_scores.json", "w") as f:
+            json.dump(self.high_scores, f, indent=4)
+
+    def play_sound(self, sound_type):
+        """Play sound effects based on game events"""
+        if not self.sound_enabled:
+            return
+            
+        try:
+            # Windows sound effects
+            if platform.system() == "Windows":
+                if sound_type == "correct":
+                    winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS)
+                elif sound_type == "wrong":
+                    winsound.PlaySound("SystemHand", winsound.SND_ALIAS)
+                elif sound_type == "streak":
+                    winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS)
+                elif sound_type == "penalty":
+                    winsound.PlaySound("SystemExit", winsound.SND_ALIAS)
+                elif sound_type == "win":
+                    winsound.PlaySound("SystemQuestion", winsound.SND_ALIAS)
+                elif sound_type == "highscore":
+                    winsound.PlaySound("SystemNotification", winsound.SND_ALIAS)
+            
+            # Mac sound effects
+            elif platform.system() == "Darwin":
+                if sound_type == "correct":
+                    os.system('afplay /System/Library/Sounds/Ping.aiff')
+                elif sound_type == "wrong":
+                    os.system('afplay /System/Library/Sounds/Basso.aiff')
+                elif sound_type == "streak":
+                    os.system('afplay /System/Library/Sounds/Submarine.aiff')
+                elif sound_type == "penalty":
+                    os.system('afplay /System/Library/Sounds/Sosumi.aiff')
+                elif sound_type == "win":
+                    os.system('afplay /System/Library/Sounds/Funk.aiff')
+                elif sound_type == "highscore":
+                    os.system('afplay /System/Library/Sounds/Hero.aiff')
+            
+            # Linux sound effects
+            else:
+                # Use system beep with different frequencies
+                if sound_type == "correct":
+                    os.system('beep -f 800 -l 200')
+                elif sound_type == "wrong":
+                    os.system('beep -f 300 -l 300')
+                elif sound_type == "streak":
+                    os.system('beep -f 1000 -l 100; beep -f 1200 -l 100; beep -f 1500 -l 200')
+                elif sound_type == "penalty":
+                    os.system('beep -f 200 -l 500')
+                elif sound_type == "win":
+                    os.system('beep -f 1000 -l 100; beep -f 1500 -l 100; beep -f 2000 -l 300')
+                elif sound_type == "highscore":
+                    os.system('beep -f 1000 -l 100; beep -f 1500 -l 100; beep -f 2000 -l 100; beep -f 2500 -l 300')
+                    
+        except:
+            self.sound_enabled = False  # Disable sounds if any error occurs
+
+    def display_welcome(self):
+        """Display welcome banner"""
+        print("\n" + "="*60)
+        print("🌎"*10 + " GEOGRAPHY QUIZ CHALLENGE " + "🌏"*10)
+        print("="*60)
+        print("⚠️ Penalty: 3 wrong answers in a row deducts 2 points!")
+        print("🔥 Bonus: Answer streaks earn extra points!")
+        print("🏆 Compete for high scores on the leaderboard!")
+        print("="*60 + "\n")
+
+    def start_quiz(self):
+        self.display_welcome()
+        
+        # Get user details
+        self.username = input("Enter your name: ").strip() or "Player"
+        
+        # Sound preference
+        sound_pref = input("Enable sound effects? (y/n): ").lower()
+        self.sound_enabled = sound_pref.startswith('y')
+        
+        # Difficulty selection
+        print("\nSelect difficulty:")
+        print("1. Easy (10 questions)")
+        print("2. Medium (15 questions)")
+        print("3. Hard (20 questions)")
+        while True:
+            diff_choice = input("Enter choice (1-3): ")
+            if diff_choice in ['1', '2', '3']:
+                self.difficulty = ["easy", "medium", "hard"][int(diff_choice)-1]
+                break
+            print("Invalid choice. Please enter 1, 2, or 3.")
+        
+        # Prepare questions based on difficulty
+        num_questions = {"easy": 10, "medium": 15, "hard": 20}[self.difficulty]
+        max_difficulty = {"easy": 1, "medium": 2, "hard": 3}[self.difficulty]
+        
+        # Filter questions by difficulty
+        filtered_questions = [q for q in self.questions if q["difficulty"] <= max_difficulty]
+        random.shuffle(filtered_questions)
+        self.current_questions = filtered_questions[:num_questions]
+        
+        print(f"\nHello {self.username}! You'll get {num_questions} {self.difficulty} questions. Let's begin!\n")
+        input("Press Enter to start the quiz...")
+        print("\n" + "="*50)
+        
+        # Start timer
+        self.start_time = time.time()
+        
+        for i, q in enumerate(self.current_questions, 1):
+            print(f"\nQuestion #{i}: {q['question']} [{'★'*q['difficulty']}]")
+            random.shuffle(q['options'])
+            
+            for j, option in enumerate(q['options'], 1):
+                print(f"  {j}. {option}")
+            
+            user_answer = self.get_valid_input(len(q['options']))
+            
+            if q['options'][user_answer-1] == q['answer']:
+                self.handle_correct_answer(q['difficulty'])
+            else:
+                self.handle_wrong_answer(q['answer'])
+            
+            time.sleep(0.5)
+        
+        # Calculate total time
+        self.total_time = time.time() - self.start_time
+        self.show_results()
+
+    def handle_correct_answer(self, difficulty):
+        """Process correct answer with streak bonuses and difficulty scaling"""
+        self.consecutive_correct += 1
+        self.consecutive_wrong = 0
+        self.penalty_active = False
+        
+        # Base points scale with difficulty
+        base_points = difficulty  # 1 for easy, 2 for medium, 3 for hard
+        self.score += base_points
+        print(f"\n✅ Correct! +{base_points} point{'s' if base_points > 1 else ''}")
+        self.play_sound("correct")
+        
+        # Streak bonus points
+        streak_bonus = 0
+        if self.consecutive_correct >= 3:
+            streak_bonus = 1 + (self.consecutive_correct - 3) // 2
+            self.score += streak_bonus
+            print(f"🔥 {self.consecutive_correct}-ANSWER STREAK! +{streak_bonus} bonus points!")
+            self.play_sound("streak")
+        
+        # Show streak counter
+        print(f"Current streak: {self.consecutive_correct} correct")
+
+    def handle_wrong_answer(self, correct_answer):
+        """Process wrong answer with penalties"""
+        print(f"\n❌ Incorrect! The answer is: {correct_answer}")
+        self.consecutive_wrong += 1
+        self.consecutive_correct = 0  # Reset streak
+        self.play_sound("wrong")
+        
+        # Apply penalty after 3 consecutive wrong answers
+        if self.consecutive_wrong >= 3 and not self.penalty_active:
+            penalty = 2  # More severe penalty on higher difficulties
+            self.score = max(0, self.score - penalty)
+            self.penalty_active = True
+            print(f"⚠️ PENALTY! 3 wrong in a row: -{penalty} points!")
+            self.play_sound("penalty")
+            
+        # Show warning counter
+        print(f"Consecutive wrong: {self.consecutive_wrong}/3 (penalty at 3)")
+
+    def get_valid_input(self, max_option):
+        while True:
+            try:
+                choice = input(f"Your answer (1-{max_option}): ")
+                if choice.lower() == "quit":
+                    print("\nExiting the game...")
+                    exit()
+                choice = int(choice)
+                if 1 <= choice <= max_option:
+                    return choice
+                else:
+                    print(f"Please enter a number between 1 and {max_option}")
+            except ValueError:
+                print("Invalid input. Please enter a number or 'quit' to exit.")
+
+    def show_results(self):
+        # Format time
+        minutes, seconds = divmod(int(self.total_time), 60)
+        time_str = f"{minutes}m {seconds}s"
+        
+        print("\n" + "="*50)
+        print("📊 FINAL QUIZ RESULTS 📊")
+        print("="*50)
+        print(f"Player: {self.username}")
+        print(f"Difficulty: {self.difficulty.capitalize()}")
+        print(f"Score: {self.score} points")
+        print(f"Time: {time_str}")
+        print("="*50)
+        
+        # Calculate rating
+        max_possible = sum(q['difficulty'] for q in self.current_questions)
+        percentage = (self.score / max_possible) * 100 if max_possible > 0 else 0
+        
+        if percentage >= 90:
+            rating = "Geography Genius! 🌟"
+            self.play_sound("win")
+        elif percentage >= 70:
+            rating = "World Traveler! ✈️"
+        elif percentage >= 50:
+            rating = "Geography Buff! 🗺️"
+        else:
+            rating = "Time to study the atlas! 📚"
+        
+        # Add performance notes
+        notes = []
+        if self.consecutive_correct >= 3:
+            notes.append(f"🔥 {self.consecutive_correct}-answer streak")
+        if self.consecutive_wrong >= 3:
+            notes.append(f"⚠️ {self.consecutive_wrong}-wrong penalty")
+        
+        if notes:
+            rating += "\n" + " | ".join(notes)
+        
+        print(f"\nFinal Rating: {rating}")
+        print("="*50)
+        
+        # High score system
+        self.update_high_scores()
+        self.display_high_scores()
+        
+        # Play again option
+        if input("\nPlay again? (y/n): ").lower().startswith('y'):
+            self.__init__()  # Reset game
+            self.start_quiz()
+        else:
+            print("\nThanks for playing! Goodbye 👋")
+
+    def update_high_scores(self):
+        """Update high scores if current score qualifies"""
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        entry = {
+            "name": self.username, 
+            "score": self.score, 
+            "date": date_str,
+            "time": int(self.total_time)
+        }
+        
+        # Get current high scores for this difficulty
+        current_scores = self.high_scores.get(self.difficulty, [])
+        
+        # Add new entry
+        current_scores.append(entry)
+        
+        # Sort by score descending, then by time ascending
+        current_scores.sort(key=lambda x: (-x["score"], x["time"]))
+        self.high_scores[self.difficulty] = current_scores[:5]
+        
+        # Save to file
+        self.save_high_scores()
+        
+        # Check if we made it to the high scores
+        if entry in self.high_scores[self.difficulty]:
+            print("\n🏆 NEW HIGH SCORE! 🏆")
+            self.play_sound("highscore")
+
+    def display_high_scores(self):
+        """Display high scores for the current difficulty"""
+        print("\n🏆 HIGH SCORES ({}) 🏆".format(self.difficulty.upper()))
+        print("Rank  Name         Score   Time    Date")
+        print("-" * 40)
+        
+        scores = self.high_scores.get(self.difficulty, [])
+        for i, entry in enumerate(scores[:5], 1):
+            name_display = entry["name"][:10].ljust(10)
+            min, sec = divmod(entry["time"], 60)
+            time_str = f"{min}m{sec}s"
+            print(f"#{i:<4} {name_display} {entry['score']:<6} {time_str:<7} {entry['date']}")
+        
+        # Highlight current player if in top 5
+        current_player_in_top = any(
+            entry["name"] == self.username and entry["score"] == self.score 
+            for entry in scores[:5]
+        )
+        
+        if current_player_in_top:
+            print("\n🌟 You made it to the leaderboard! 🌟")
+
+# Start the quiz
+if __name__ == "__main__":
+    quiz = GeographyQuiz()
+    quiz.start_quiz()
